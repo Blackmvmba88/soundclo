@@ -11,7 +11,8 @@ type SoundCloudUser = {
 };
 
 type SoundCloudTrack = {
-  id: number | string;
+  id?: number | string;
+  urn?: string;
   title?: string;
   playback_count?: number;
   likes_count?: number;
@@ -84,7 +85,7 @@ export async function GET() {
 
     const mapped: TrackMetric[] = tracks
       .map((track) => ({
-        id: String(track.id),
+        id: String(track.urn ?? track.id ?? ""),
         title: track.title ?? "Untitled",
         plays: track.playback_count ?? 0,
         likes: track.likes_count ?? track.favoritings_count ?? 0,
