@@ -114,7 +114,7 @@ export async function GET() {
         ...seedData.summary,
         tracks: user.track_count ?? tracks.length ?? seedData.summary.tracks
       },
-      topTracks: mapped.length ? mapped.slice(0, 24) : seedData.topTracks,
+      topTracks: mapped.length ? mapped : seedData.topTracks,
       source: "hybrid",
       updatedAt: new Date().toISOString()
     };
