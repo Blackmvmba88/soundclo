@@ -15,11 +15,17 @@ type SoundCloudTrack = {
   title?: string;
   playback_count?: number;
   likes_count?: number;
+  favoritings_count?: number;
   comment_count?: number;
   reposts_count?: number;
   duration?: number;
   artwork_url?: string | null;
   permalink_url?: string | null;
+  waveform_url?: string | null;
+  description?: string | null;
+  genre?: string | null;
+  tag_list?: string | null;
+  metadata_artist?: string | null;
 };
 
 type CollectionResponse = {
@@ -81,12 +87,17 @@ export async function GET() {
         id: String(track.id),
         title: track.title ?? "Untitled",
         plays: track.playback_count ?? 0,
-        likes: track.likes_count ?? 0,
+        likes: track.likes_count ?? track.favoritings_count ?? 0,
         comments: track.comment_count ?? 0,
         reposts: track.reposts_count ?? 0,
         duration: track.duration,
         artworkUrl: track.artwork_url ?? null,
-        permalinkUrl: track.permalink_url ?? null
+        permalinkUrl: track.permalink_url ?? null,
+        waveformUrl: track.waveform_url ?? null,
+        description: track.description ?? null,
+        genre: track.genre ?? null,
+        tagList: track.tag_list ?? null,
+        metadataArtist: track.metadata_artist ?? null
       }))
       .sort((a, b) => b.plays - a.plays);
 
@@ -103,7 +114,7 @@ export async function GET() {
         ...seedData.summary,
         tracks: user.track_count ?? tracks.length ?? seedData.summary.tracks
       },
-      topTracks: mapped.length ? mapped.slice(0, 12) : seedData.topTracks,
+      topTracks: mapped.length ? mapped : seedData.topTracks,
       source: "hybrid",
       updatedAt: new Date().toISOString()
     };
