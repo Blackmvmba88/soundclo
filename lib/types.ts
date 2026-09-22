@@ -25,6 +25,11 @@ export type TrackMetric = {
   duration?: number;
   artworkUrl?: string | null;
   permalinkUrl?: string | null;
+  waveformUrl?: string | null;
+  description?: string | null;
+  genre?: string | null;
+  tagList?: string | null;
+  metadataArtist?: string | null;
 };
 
 export type DashboardData = {
