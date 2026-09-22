@@ -2,7 +2,7 @@
 
 Animated SoundCloud analytics + playback for **Iyari Gomez / BlackMamba Records**.
 
-The dashboard turns the catalog into a visual experience: global pulse, 12-month momentum, catalog depth, top tracks, mini sinusoidal playback controls and a private edit session.
+The dashboard turns the catalog into a visual experience and a working curation station: global pulse, catalog depth, SoundCloud playback, missing-artwork detection, missing-metadata detection and private editing.
 
 ## Stack
 
@@ -51,13 +51,15 @@ The UI also provides a visible SoundCloud source link for the active track. Soun
 
 Select **Mi sesión** in the catalog, enter `BLACKMAMBA_ADMIN_PASSWORD`, and the server issues an HTTP-only signed session cookie.
 
-In edit mode the track editor can update these SoundCloud fields through the authenticated server route:
+In curation mode the app audits every track and flags missing:
 
-- title
+- artwork / cover
 - metadata artist
 - genre
 - tags
 - description
+
+The private editor can then update those fields directly on SoundCloud, including uploading replacement artwork. Pending tracks are automatically prioritized with missing artwork first and higher-traffic tracks ahead inside the same priority level.
 
 Public visitors can listen but cannot access write controls or the OAuth token.
 
@@ -96,10 +98,28 @@ npm run build
 
 GitHub Actions runs both checks on pull requests and pushes to `main`.
 
-## Next slices
+## Roadmap priority
 
-1. Persist hourly/daily snapshots for 1h / 3h / 24h / 7d velocity.
-2. Full geographic map layer.
-3. Catalog buckets: >10K, 5K–10K, 1K–5K, 100–1K and <100.
-4. Track detail page with artwork, waveform, comments and history.
-5. Multi-platform normalization for Spotify / YouTube / other sources.
+### P0 — Catalog curation
+- Detect missing artwork and core metadata across the entire catalog.
+- Curate directly from the private session.
+- Upload missing covers and save corrected metadata to SoundCloud.
+- Work through a priority queue weighted by missing fields and existing traffic.
+
+### P1 — Curation quality
+- Batch presets for artist, genre and common tags.
+- Album-aware metadata inheritance and consistency checks.
+- Duplicate/inconsistent cover detection.
+- Curation progress snapshots and completion percentage.
+
+### P2 — Analytics
+- Persist hourly/daily snapshots for 1h / 3h / 24h / 7d velocity.
+- Full geographic map layer.
+- Catalog buckets: >10K, 5K–10K, 1K–5K, 100–1K and <100.
+
+### P3 — Visual playback
+- Replace the generic mini sine with each track's real SoundCloud waveform signature.
+- Track detail page with waveform, comments and history.
+
+### P4 — Multi-platform
+- Normalize Spotify, YouTube and other sources behind the same analytics model.
