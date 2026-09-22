@@ -43,6 +43,8 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState(false);
   const [editing, setEditing] = useState<TrackMetric | null>(null);
+  const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(48);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const widgetRef = useRef<SoundCloudWidgetInstance | null>(null);
 
@@ -99,6 +101,17 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
     widget.bind(events.ERROR, () => setPlaying(false));
   }, [activeTrack, frameLoaded, scriptReady]);
 
+  const filteredTracks = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return localTracks;
+    return localTracks.filter((track) =>
+      [track.title, track.genre, track.tagList, track.metadataArtist]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(needle))
+    );
+  }, [localTracks, query]);
+
+  const displayedTracks = filteredTracks.slice(0, visibleCount);
   const max = Math.max(...localTracks.map((track) => track.plays), 1);
 
   const playerSrc = useMemo(() => {
@@ -167,7 +180,7 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
             <h2>Hits enterrados en el océano.</h2>
           </div>
           <div className="catalog-controls">
-            <span className="muted">ordenado por plays</span>
+            <span className="muted">{filteredTracks.length.toLocaleString("es-MX")} pistas · ordenadas por plays</span>
             {admin ? (
               <>
                 <span className="admin-live"><i /> EDIT MODE</span>
@@ -181,8 +194,22 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
           </div>
         </div>
 
+        <div className="catalog-search-row">
+          <input
+            className="catalog-search"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setVisibleCount(48);
+            }}
+            placeholder="Buscar canción, género, tag o artista..."
+            aria-label="Buscar en el catálogo"
+          />
+          <span>{displayedTracks.length.toLocaleString("es-MX")} / {filteredTracks.length.toLocaleString("es-MX")}</span>
+        </div>
+
         <div className="track-list">
-          {localTracks.map((track, index) => {
+          {displayedTracks.map((track, index) => {
             const active = activeTrack?.id === track.id;
             const playable = Boolean(track.permalinkUrl);
 
@@ -248,6 +275,16 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
             );
           })}
         </div>
+
+        {displayedTracks.length < filteredTracks.length ? (
+          <button
+            className="dive-deeper"
+            type="button"
+            onClick={() => setVisibleCount((current) => current + 48)}
+          >
+            DIVE DEEPER · +48 TRACKS
+          </button>
+        ) : null}
       </div>
 
       {activeTrack?.permalinkUrl ? (
