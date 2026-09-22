@@ -244,8 +244,8 @@ export default function Home() {
           <span className="eyebrow">THE OCEAN</span>
           <h2>{full(data.summary.tracks)} puertas de entrada.</h2>
           <p>
-            Cuanto más bajas, más catálogo aparece. La meta ya no es medir una canción:
-            es medir cómo se mueve el sistema completo.
+            Cuanto más bajas, más catálogo aparece. Cada mini onda reproduce la pista desde
+            SoundCloud; en tu sesión privada puedes editar sus detalles reales sin salir del dashboard.
           </p>
         </div>
         <TrackTable tracks={data.topTracks} />
@@ -254,7 +254,7 @@ export default function Home() {
       <footer>
         <span>BLACKMAMBA RECORDS</span>
         <span>{data.profile.username}</span>
-        <span>SoundCloud analytics experience · v0.1</span>
+        <span>SoundCloud analytics + player · v0.2</span>
       </footer>
     </main>
   );
