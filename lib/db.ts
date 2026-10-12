@@ -2,7 +2,9 @@ import { Pool } from "pg";
 import { getConnectionString } from "@netlify/database";
 const globalDb = globalThis as unknown as { bmPool?: Pool };
 export function hasDatabase() {
-  return Boolean(process.env.DATABASE_URL || process.env.NETLIFY_DB_URL || process.env.NETLIFY);
+  try {
+    return Boolean(process.env.DATABASE_URL || process.env.NETLIFY_DB_URL || getConnectionString());
+  } catch { return false; }
 }
 export function db() {
   const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DB_URL || getConnectionString();
