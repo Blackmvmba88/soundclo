@@ -67,3 +67,9 @@ npm audit --omit=dev
 Las pruebas cubren cifrado autenticado y rechazo de eventos inválidos. Las comprobaciones HTTP locales verifican catálogo vacío, autenticación de Insights/OAuth/sync, rechazo de origen y payload inválidos. No sustituyen pruebas de integración con servicios reales.
 
 Netlify detecta Next.js; `netlify.toml` usa Node 24. Configurar variables privadas en el panel del proyecto, nunca en Git ni en prefijos `NEXT_PUBLIC_`. Ejecutar la migración contra la base de producción antes de conectar la cuenta. `.netlify` se ignora para conservar estado de vinculación local fuera de Git.
+
+## Conexión del portal publicado
+
+Portal: https://blackmamba-music-platform.netlify.app. La app existente `blackmamba` usa ahora el retorno `https://blackmamba-music-platform.netlify.app/api/auth/soundcloud/callback`, autorizado por el propietario. El perfil configurado es Iyari Gomez (`1561556004`). El programa local que usaba `http://127.0.0.1:8765/callback` requiere su propio retorno o app para futuras autorizaciones.
+
+Netlify Database se provisiona con `@netlify/database` y las migraciones versionadas en `netlify/database/migrations/`. Se conserva `DATABASE_URL` como opción para PostgreSQL externo; el portal usa la conexión de Netlify en producción. Las credenciales de OAuth y administración se guardan en variables privadas del sitio y en archivos locales ignorados por Git.

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
 import { isAdminSession } from "@/lib/admin-session";
+import { hasDatabase } from "@/lib/db";
 import { seal } from "@/lib/crypto";
 export async function GET() {
   if (!(await isAdminSession()))
@@ -13,7 +14,7 @@ export async function GET() {
     !process.env.SOUNDCLOUD_CLIENT_ID ||
     !process.env.SOUNDCLOUD_CLIENT_SECRET ||
     !process.env.SOUNDCLOUD_REDIRECT_URI ||
-    !process.env.DATABASE_URL
+    !hasDatabase()
   )
     return NextResponse.json(
       { error: "Falta configurar OAuth y PostgreSQL" },

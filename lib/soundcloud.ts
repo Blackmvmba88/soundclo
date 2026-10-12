@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, hasDatabase } from "./db";
 import { seal, unseal } from "./crypto";
 export type Tokens = {
   access_token: string;
@@ -32,7 +32,7 @@ export async function saveTokens(tokens: Tokens) {
   );
 }
 export async function accessToken() {
-  if (!process.env.DATABASE_URL)
+  if (!hasDatabase())
     return process.env.SOUNDCLOUD_ACCESS_TOKEN ?? null;
   const client = await db().connect();
   try {

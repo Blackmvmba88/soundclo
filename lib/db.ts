@@ -1,9 +1,11 @@
 import { Pool } from "pg";
+import { getConnectionString } from "@netlify/database";
 const globalDb = globalThis as unknown as { bmPool?: Pool };
+export function hasDatabase() {
+  return Boolean(process.env.DATABASE_URL || process.env.NETLIFY_DB_URL || process.env.NETLIFY);
+}
 export function db() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL missing");
-  return (globalDb.bmPool ??= new Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: 5,
-  }));
+  const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DB_URL || getConnectionString();
+  if (!connectionString) throw new Error("PostgreSQL is not configured");
+  return (globalDb.bmPool ??= new Pool({ connectionString, max: 5 }));
 }
