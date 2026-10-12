@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/admin-session";
 
-const API_BASE = process.env.SOUNDCLOUD_API_BASE ?? "https://api.soundcloud.com";
+const API_BASE = "https://api.soundcloud.com";
+import { accessToken } from "@/lib/soundcloud";
 
 type EditableTrack = {
   title?: string;
@@ -17,23 +18,32 @@ function clean(value: unknown, max: number) {
 
 export async function PUT(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminSession())) {
-    return NextResponse.json({ error: "Admin session required." }, { status: 401 });
+  if (
+    request.headers.get("origin") !== new URL(request.url).origin ||
+    !(await isAdminSession())
+  ) {
+    return NextResponse.json(
+      { error: "Admin session required." },
+      { status: 401 },
+    );
   }
 
-  const token = process.env.SOUNDCLOUD_ACCESS_TOKEN;
+  const token = await accessToken();
   if (!token) {
     return NextResponse.json(
       { error: "SOUNDCLOUD_ACCESS_TOKEN is not configured." },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
   const body = (await request.json().catch(() => null)) as EditableTrack | null;
   if (!body) {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body." },
+      { status: 400 },
+    );
   }
 
   const track: Record<string, string> = {};
@@ -50,26 +60,29 @@ export async function PUT(
   if (metadataArtist !== undefined) track.metadata_artist = metadataArtist;
 
   if (!Object.keys(track).length) {
-    return NextResponse.json({ error: "No editable fields supplied." }, { status: 400 });
+    return NextResponse.json(
+      { error: "No editable fields supplied." },
+      { status: 400 },
+    );
   }
 
   const { id } = await context.params;
-  const response = await fetch(\`\${API_BASE}/tracks/\${encodeURIComponent(id)}\`, {
+  const response = await fetch(`${API_BASE}/tracks/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: {
-      Authorization: \`OAuth \${token}\`,
+      Authorization: `OAuth ${token}`,
       Accept: "application/json; charset=utf-8",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ track }),
-    cache: "no-store"
+    cache: "no-store",
   });
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     return NextResponse.json(
       { error: "SoundCloud rejected the update.", details: payload },
-      { status: response.status }
+      { status: response.status },
     );
   }
 
@@ -79,6 +92,6 @@ export async function PUT(
     description: payload.description ?? description ?? null,
     genre: payload.genre ?? genre ?? null,
     tagList: payload.tag_list ?? tagList ?? null,
-    metadataArtist: payload.metadata_artist ?? metadataArtist ?? null
+    metadataArtist: payload.metadata_artist ?? metadataArtist ?? null,
   });
 }
