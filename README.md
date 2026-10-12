@@ -75,3 +75,5 @@ Portal: https://blackmamba-music-platform.netlify.app. La app existente `blackma
 Netlify Database se provisiona con `@netlify/database` y las migraciones versionadas en `netlify/database/migrations/`. Se conserva `DATABASE_URL` como opción para PostgreSQL externo; el portal usa la conexión de Netlify en producción. Las credenciales de OAuth y administración se guardan en variables privadas del sitio y en archivos locales ignorados por Git.
 
 La cuenta Iyari Gomez quedó conectada por OAuth y la importación inicial de 50 pistas públicas se verificó en PostgreSQL. La sincronización ahora trae todas las páginas del catálogo público. El permiso OAuth se valida en el retorno con un nonce cifrado y expiración; la cookie privada permanece SameSite Strict.
+
+Sincronización completa verificada: **674 pistas públicas**, guardadas en PostgreSQL y disponibles para búsqueda/reproducción. La recarga del catálogo evita respuestas anteriores en caché. La prueba de acreditación en Creator Insights desde otra cuenta sigue pendiente.

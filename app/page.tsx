@@ -18,7 +18,7 @@ export default function Home() {
     >(null);
   async function load() {
     try {
-      const r = await fetch("/api/soundcloud");
+      const r = await fetch(`/api/soundcloud?refresh=${Date.now()}`, { cache: "no-store" });
       const d = await r.json();
       setTracks(d.tracks);
       setSource(d.source);
