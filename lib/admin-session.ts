@@ -5,7 +5,11 @@ export const ADMIN_COOKIE = "bm_admin_session";
 const SESSION_MS = 12 * 60 * 60 * 1000;
 
 function sessionSecret() {
-  return process.env.BLACKMAMBA_SESSION_SECRET ?? process.env.BLACKMAMBA_ADMIN_PASSWORD ?? "";
+  return (
+    process.env.BLACKMAMBA_SESSION_SECRET ??
+    process.env.BLACKMAMBA_ADMIN_PASSWORD ??
+    ""
+  );
 }
 
 function signature(payload: string) {
@@ -20,17 +24,23 @@ function safeEqual(a: string, b: string) {
 
 export function createAdminSessionToken() {
   const expires = String(Date.now() + SESSION_MS);
-  const payload = \`blackmamba-admin:\${expires}\`;
-  return \`\${expires}.\${signature(payload)}\`;
+  const payload = `blackmamba-admin:${expires}`;
+  return `${expires}.${signature(payload)}`;
 }
 
 export function verifyAdminSessionToken(token?: string) {
   if (!token || !sessionSecret()) return false;
 
   const [expires, suppliedSignature] = token.split(".");
-  if (!expires || !suppliedSignature || Number(expires) < Date.now()) return false;
+  if (
+    !expires ||
+    !suppliedSignature ||
+    !/^\d+$/.test(expires) ||
+    Number(expires) < Date.now()
+  )
+    return false;
 
-  const expected = signature(\`blackmamba-admin:\${expires}\`);
+  const expected = signature(`blackmamba-admin:${expires}`);
   return safeEqual(suppliedSignature, expected);
 }
 

@@ -9,7 +9,12 @@ type MetricCardProps = {
   note?: string;
 };
 
-export function MetricCard({ label, value, accent = "var(--hot)", note }: MetricCardProps) {
+export function MetricCard({
+  label,
+  value,
+  accent = "var(--hot)",
+  note,
+}: MetricCardProps) {
   return (
     <motion.article
       className="metric-card glass"
@@ -19,7 +24,10 @@ export function MetricCard({ label, value, accent = "var(--hot)", note }: Metric
       transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
     >
       <span className="metric-kicker">{label}</span>
-      <strong className="metric-value" style={{ textShadow: `0 0 28px ${accent}` }}>
+      <strong
+        className="metric-value"
+        style={{ textShadow: `0 0 28px ${accent}` }}
+      >
         {value}
       </strong>
       {note ? <span className="metric-note">{note}</span> : null}
