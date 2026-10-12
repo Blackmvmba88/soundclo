@@ -23,7 +23,7 @@ export async function GET() {
   const state = randomBytes(32).toString("base64url"),
     verifier = randomBytes(48).toString("base64url");
   const store = await cookies();
-  store.set("bm_oauth", seal({ state, verifier }), {
+  store.set("bm_oauth", seal({ state, verifier, expiresAt: Date.now() + 600000 }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

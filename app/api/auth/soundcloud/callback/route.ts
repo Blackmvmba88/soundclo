@@ -1,24 +1,17 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { unseal } from "@/lib/crypto";
+import { verifyOAuthState } from "@/lib/oauth-state";
 import { exchange, saveTokens, scFetch } from "@/lib/soundcloud";
-import { isAdminSession } from "@/lib/admin-session";
 export async function GET(request: Request) {
   const store = await cookies();
   const cookie = store.get("bm_oauth")?.value;
   store.delete("bm_oauth");
   try {
-    if (!(await isAdminSession()) || !cookie)
-      throw new Error("Invalid session");
-    const { state, verifier } = unseal<{ state: string; verifier: string }>(
-      cookie,
-    );
     const url = new URL(request.url);
-    if (
-      url.searchParams.get("state") !== state ||
-      !url.searchParams.get("code")
-    )
-      throw new Error("Invalid OAuth state");
+    if (!url.searchParams.get("code")) throw new Error("Missing authorization code");
+    // The encrypted, expiring nonce is issued only after admin authentication.
+    // Strict admin cookies are intentionally unavailable on cross-site callbacks.
+    const { verifier } = verifyOAuthState(cookie, url.searchParams.get("state"));
     const tokens = await exchange({
       grant_type: "authorization_code",
       code: url.searchParams.get("code")!,
