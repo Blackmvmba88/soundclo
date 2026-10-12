@@ -5,7 +5,7 @@ Portal Next.js de **Iyari Gomez · BlackMamba RECORDS**. Evoluciona el repositor
 ## Estado verificado
 
 - Next.js 16 y React 19: build y pruebas de seguridad pasan.
-- Catálogo y buscador con portadas; importación administrada de hasta 50 pistas **públicas**.
+- Catálogo y buscador con portadas; importación administrada del catálogo completo de pistas **públicas**.
 - Widget oficial visible, sin autoplay. PLAY, PAUSE, PLAY_PROGRESS y FINISH se envían al backend.
 - PostgreSQL conserva catálogo, eventos, enriquecimiento y tokens OAuth cifrados AES-256-GCM.
 - OAuth 2.1 con PKCE, nonce state, cookies HttpOnly y verificación del propietario.
@@ -13,7 +13,7 @@ Portal Next.js de **Iyari Gomez · BlackMamba RECORDS**. Evoluciona el repositor
 - Dashboard privado separa eventos propios de contadores acumulados de SoundCloud.
 - Endpoint Firecrawl v2 para páginas públicas en una lista de dominios aprobados.
 
-**Pendiente de configuración y prueba real:** cuenta OAuth, PostgreSQL, importación real, reproducción desde otra cuenta y acreditación en SoundCloud Insights. Países, ciudades, retención y series históricas no se inventan ni se recuperan del antiguo seed. El archivo histórico `data/seed.ts` permanece en Git, pero la aplicación no lo consume.
+**Pendiente de configuración y prueba real:** reproducción desde otra cuenta y acreditación en SoundCloud Insights. Países, ciudades, retención y series históricas no se inventan ni se recuperan del antiguo seed. El archivo histórico `data/seed.ts` permanece en Git, pero la aplicación no lo consume.
 
 ## Arranque desde cero
 
@@ -30,7 +30,7 @@ npm run dev
 3. Registrar exactamente `http://localhost:3000/api/auth/soundcloud/callback` como redirect para desarrollo; para producción usar el dominio HTTPS publicado.
 4. Guardar `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET`, `SOUNDCLOUD_REDIRECT_URI` y `SOUNDCLOUD_OWNER_ID` en servidor. El owner ID es el ID numérico del perfil autorizado, consultable con `/me` en el API Explorer. Se exige antes de guardar una conexión para impedir conectar otra cuenta.
 5. Crear una contraseña privada de administrador y un `BLACKMAMBA_SESSION_SECRET` aleatorio de al menos 32 caracteres. Cambiar este secreto invalida sesiones y hace ilegibles los tokens almacenados; reconectar la cuenta después de rotarlo.
-6. Abrir **Mi sesión**, entrar, pulsar **Conectar SoundCloud** y autorizar; después pulsar **Sincronizar 50 pistas**.
+6. Abrir **Mi sesión**, entrar, pulsar **Conectar SoundCloud** y autorizar; después pulsar **Sincronizar todo el catálogo**.
 7. Para Firecrawl configurar su API key y `FIRECRAWL_ALLOWED_HOSTS`. Desde una sesión administradora enviar `POST /api/enrich` con JSON `{"url":"https://dominio-aprobado/pagina"}`. Solo enriquece contenido; no genera escuchas ni modifica automáticamente las pistas.
 
 ## Datos y límites
@@ -41,7 +41,7 @@ npm run dev
 
 El evento PROGRESS conserva la posición; **no** se presenta como tiempo escuchado o retención porque los saltos de reproducción alterarían esa interpretación. No se persisten IP, ubicación ni referrer. Un fallo de almacenamiento se avisa sin interrumpir el audio.
 
-Sin conexión se muestra catálogo vacío y explicación. No hay métricas ficticias ni audio simulado. Las pistas retiradas de la importación quedan inactivas y conservan el historial de eventos. La selección es el primer conjunto público disponible vía API, hasta 50 pistas.
+Sin conexión se muestra catálogo vacío y explicación. No hay métricas ficticias ni audio simulado. Las pistas retiradas de la importación quedan inactivas y conservan el historial de eventos. La importación recorre todas las páginas y deduplica por ID; si falla una página, se repite una URL o se supera el límite de seguridad de 100 páginas, conserva el catálogo anterior completo. Guarda el lote en una sola transacción.
 
 La edición existente modifica metadatos reales en SoundCloud bajo sesión privada; una edición se refleja en el catálogo persistido después de sincronizar. No hay subida ni publicación automática de audio.
 
@@ -73,3 +73,5 @@ Netlify detecta Next.js; `netlify.toml` usa Node 24. Configurar variables privad
 Portal: https://blackmamba-music-platform.netlify.app. La app existente `blackmamba` usa ahora el retorno `https://blackmamba-music-platform.netlify.app/api/auth/soundcloud/callback`, autorizado por el propietario. El perfil configurado es Iyari Gomez (`1561556004`). El programa local que usaba `http://127.0.0.1:8765/callback` requiere su propio retorno o app para futuras autorizaciones.
 
 Netlify Database se provisiona con `@netlify/database` y las migraciones versionadas en `netlify/database/migrations/`. Se conserva `DATABASE_URL` como opción para PostgreSQL externo; el portal usa la conexión de Netlify en producción. Las credenciales de OAuth y administración se guardan en variables privadas del sitio y en archivos locales ignorados por Git.
+
+La cuenta Iyari Gomez quedó conectada por OAuth y la importación inicial de 50 pistas públicas se verificó en PostgreSQL. La sincronización ahora trae todas las páginas del catálogo público. El permiso OAuth se valida en el retorno con un nonce cifrado y expiración; la cookie privada permanece SameSite Strict.

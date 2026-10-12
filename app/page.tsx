@@ -31,7 +31,7 @@ export default function Home() {
     void load();
   }, []);
   async function sync() {
-    setMessage("Importando hasta 50 pistas públicas…");
+    setMessage("Sincronizando todo el catálogo público…");
     try {
       const r = await fetch("/api/catalog/sync", { method: "POST" });
       const d = await r.json();
@@ -103,7 +103,7 @@ export default function Home() {
             label="CATÁLOGO IMPORTADO"
             value={String(tracks.length)}
             accent="var(--pink)"
-            note="Hasta 50 pistas públicas"
+            note="Pistas públicas sincronizadas"
           />
           <MetricCard
             label="PLAYS SOUNDCLOUD"
@@ -147,7 +147,7 @@ export default function Home() {
             Conectar SoundCloud ↗
           </a>
           <button className="text-button" onClick={sync}>
-            Sincronizar 50 pistas
+            Sincronizar todo el catálogo
           </button>
         </div>
       </section>
