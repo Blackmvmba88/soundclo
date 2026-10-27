@@ -6,7 +6,7 @@ import type { GeoPoint } from "@/lib/types";
 function project(lat: number, lon: number) {
   return {
     x: ((lon + 180) / 360) * 1000,
-    y: ((90 - lat) / 180) * 500
+    y: ((90 - lat) / 180) * 500,
   };
 }
 
@@ -20,11 +20,17 @@ export function WorldPulse({ points }: { points: GeoPoint[] }) {
           <span className="eyebrow">GLOBAL PULSE</span>
           <h2>El catálogo está viajando.</h2>
         </div>
-        <span className="live-pill"><i /> LIVE MAP</span>
+        <span className="live-pill">
+          <i /> LIVE MAP
+        </span>
       </div>
 
       <div className="world-stage">
-        <svg viewBox="0 0 1000 500" role="img" aria-label="Mapa abstracto de audiencia global">
+        <svg
+          viewBox="0 0 1000 500"
+          role="img"
+          aria-label="Mapa abstracto de audiencia global"
+        >
           <defs>
             <radialGradient id="oceanGlow">
               <stop offset="0%" stopColor="#ff2bd6" stopOpacity=".28" />
@@ -44,7 +50,13 @@ export function WorldPulse({ points }: { points: GeoPoint[] }) {
             <line key={x} x1={x} y1="55" x2={x} y2="445" className="map-grid" />
           ))}
           <ellipse cx="500" cy="250" rx="445" ry="195" className="map-orbit" />
-          <ellipse cx="500" cy="250" rx="445" ry="105" className="map-orbit faint" />
+          <ellipse
+            cx="500"
+            cy="250"
+            rx="445"
+            ry="105"
+            className="map-orbit faint"
+          />
 
           {points.map((point, index) => {
             const { x, y } = project(point.lat, point.lon);
@@ -58,11 +70,28 @@ export function WorldPulse({ points }: { points: GeoPoint[] }) {
                   fill="#ff2bd6"
                   opacity={0.12}
                   filter="url(#blurGlow)"
-                  animate={{ r: [size * 1.5, size * 2.8, size * 1.5], opacity: [0.08, 0.22, 0.08] }}
-                  transition={{ duration: 2.4 + (index % 4) * 0.4, repeat: Infinity }}
+                  animate={{
+                    r: [size * 1.5, size * 2.8, size * 1.5],
+                    opacity: [0.08, 0.22, 0.08],
+                  }}
+                  transition={{
+                    duration: 2.4 + (index % 4) * 0.4,
+                    repeat: Infinity,
+                  }}
                 />
-                <circle cx={x} cy={y} r={size} fill="#ff6a00" className="map-point" />
-                <circle cx={x} cy={y} r={Math.max(2, size * 0.35)} fill="#fff4dc" />
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={size}
+                  fill="#ff6a00"
+                  className="map-point"
+                />
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={Math.max(2, size * 0.35)}
+                  fill="#fff4dc"
+                />
               </g>
             );
           })}

@@ -7,7 +7,7 @@ import type { TrackMetric } from "@/lib/types";
 export function TrackEditor({
   track,
   onClose,
-  onSaved
+  onSaved,
 }: {
   track: TrackMetric;
   onClose: () => void;
@@ -17,9 +17,9 @@ export function TrackEditor({
   const [description, setDescription] = useState(track.description ?? "");
   const [genre, setGenre] = useState(track.genre ?? "");
   const [tagList, setTagList] = useState(track.tagList ?? "");
-  const [metadataArtist, setMetadataArtist] = useState(track.metadataArtist ?? "");
-  const [artwork, setArtwork] = useState<File | null>(null);
-  const [artworkPreview, setArtworkPreview] = useState<string | null>(track.artworkUrl ?? null);
+  const [metadataArtist, setMetadataArtist] = useState(
+    track.metadataArtist ?? "Iyari Gomez",
+  );
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -39,20 +39,19 @@ export function TrackEditor({
     setStatus("saving");
     setErrorMessage("");
 
-    const body = new FormData();
-    body.append("title", title);
-    body.append("description", description);
-    body.append("genre", genre);
-    body.append("tagList", tagList);
-    body.append("metadataArtist", metadataArtist);
-    if (artwork) body.append("artwork", artwork);
-
     const response = await fetch(
       `/api/soundcloud/tracks/${encodeURIComponent(track.id)}`,
       {
         method: "PUT",
-        body
-      }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description,
+          genre,
+          tagList,
+          metadataArtist,
+        }),
+      },
     );
 
     if (!response.ok) {
@@ -70,7 +69,6 @@ export function TrackEditor({
       genre: updated.genre ?? genre,
       tagList: updated.tagList ?? tagList,
       metadataArtist: updated.metadataArtist ?? metadataArtist,
-      artworkUrl: updated.artworkUrl ?? artworkPreview ?? track.artworkUrl
     });
     onClose();
   }
@@ -96,30 +94,23 @@ export function TrackEditor({
               )}
             </div>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Cerrar">
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
             ×
           </button>
         </div>
 
-        <div className="artwork-editor">
-          <div className={`artwork-preview ${artworkPreview ? "" : "is-missing"}`}>
-            {artworkPreview ? <img src={artworkPreview} alt="Portada" /> : <span>NO COVER</span>}
-          </div>
-          <label className="artwork-picker">
-            Portada
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => chooseArtwork(event.target.files?.[0] ?? null)}
-            />
-            <strong>{artwork ? artwork.name : track.artworkUrl ? "Cambiar portada" : "Agregar portada"}</strong>
-            <small>PNG, JPG o WEBP · máximo 12 MB</small>
-          </label>
-        </div>
-
         <label>
           Título
-          <input value={title} onChange={(event) => setTitle(event.target.value)} required />
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            required
+          />
         </label>
 
         <label className={!metadataArtist.trim() ? "field-missing" : ""}>
@@ -127,7 +118,6 @@ export function TrackEditor({
           <input
             value={metadataArtist}
             onChange={(event) => setMetadataArtist(event.target.value)}
-            placeholder="Iyari Gomez"
           />
         </label>
 
@@ -137,7 +127,6 @@ export function TrackEditor({
             <input
               value={genre}
               onChange={(event) => setGenre(event.target.value)}
-              placeholder="Reggae, Dub, Dancehall..."
             />
           </label>
           <label className={!tagList.trim() ? "field-missing" : ""}>
@@ -145,7 +134,6 @@ export function TrackEditor({
             <input
               value={tagList}
               onChange={(event) => setTagList(event.target.value)}
-              placeholder="blackmamba iyari reggae..."
             />
           </label>
         </div>
@@ -156,18 +144,21 @@ export function TrackEditor({
             rows={7}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="Créditos, contexto, enlaces o notas de la canción..."
           />
         </label>
 
         <div className="editor-actions">
           <span className={status === "error" ? "editor-error" : "muted"}>
             {status === "error"
-              ? errorMessage
-              : "Guardar actualiza la pista real en SoundCloud."}
+              ? "SoundCloud no aceptó el cambio."
+              : "Los cambios se escriben en la pista real."}
           </span>
-          <button className="primary-button" type="submit" disabled={status === "saving"}>
-            {status === "saving" ? "Curando..." : "Guardar curación"}
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={status === "saving"}
+          >
+            {status === "saving" ? "Guardando..." : "Guardar en SoundCloud"}
           </button>
         </div>
       </form>

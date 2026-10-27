@@ -1,125 +1,79 @@
-# BlackMamba Insights
+# BLACKMAMBA MUSIC PLATFORM
 
-Animated SoundCloud analytics + playback for **Iyari Gomez / BlackMamba Records**.
+Portal Next.js de **Iyari Gomez · BlackMamba RECORDS**. Evoluciona el repositorio existente `soundclo`; no duplica el Music Hub de producción local.
 
-The dashboard turns the catalog into a visual experience and a working curation station: global pulse, catalog depth, SoundCloud playback, missing-artwork detection, missing-metadata detection and private editing.
+## Estado verificado
 
-## Stack
+- Next.js 16 y React 19: build y pruebas de seguridad pasan.
+- Catálogo y buscador con portadas; importación administrada del catálogo completo de pistas **públicas**.
+- Widget oficial visible, sin autoplay. PLAY, PAUSE, PLAY_PROGRESS y FINISH se envían al backend.
+- PostgreSQL conserva catálogo, eventos, enriquecimiento y tokens OAuth cifrados AES-256-GCM.
+- OAuth 2.1 con PKCE, nonce state, cookies HttpOnly y verificación del propietario.
+- Renovación del token bajo bloqueo PostgreSQL: evita reutilizar refresh tokens de un solo uso.
+- Dashboard privado separa eventos propios de contadores acumulados de SoundCloud.
+- Endpoint Firecrawl v2 para páginas públicas en una lista de dominios aprobados.
 
-- Next.js 15
-- React 19
-- TypeScript
-- Framer Motion
-- Recharts
-- SoundCloud Widget API
-- Server-side SoundCloud API adapter
+**Pendiente de configuración y prueba real:** reproducción desde otra cuenta y acreditación en SoundCloud Insights. Países, ciudades, retención y series históricas no se inventan ni se recuperan del antiguo seed. El archivo histórico `data/seed.ts` permanece en Git, pero la aplicación no lo consume.
 
-## Run locally
+## Arranque desde cero
 
 ```bash
-git clone https://github.com/Blackmvmba88/soundclo.git
-cd soundclo
-npm install
+npm ci
 cp .env.example .env.local
+# Completar variables localmente, sin subirlas a Git
+npm run db:migrate
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+1. Provisionar PostgreSQL y asignar `DATABASE_URL`; ejecutar la migración con un usuario con permisos de creación.
+2. Registrar o recuperar una aplicación desde [SoundCloud Your Apps](https://soundcloud.com/you/apps), siguiendo la [guía oficial OAuth](https://developers.soundcloud.com/docs/api/guide). Los requisitos de acceso los determina SoundCloud.
+3. Registrar exactamente `http://localhost:3000/api/auth/soundcloud/callback` como redirect para desarrollo; para producción usar el dominio HTTPS publicado.
+4. Guardar `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET`, `SOUNDCLOUD_REDIRECT_URI` y `SOUNDCLOUD_OWNER_ID` en servidor. El owner ID es el ID numérico del perfil autorizado, consultable con `/me` en el API Explorer. Se exige antes de guardar una conexión para impedir conectar otra cuenta.
+5. Crear una contraseña privada de administrador y un `BLACKMAMBA_SESSION_SECRET` aleatorio de al menos 32 caracteres. Cambiar este secreto invalida sesiones y hace ilegibles los tokens almacenados; reconectar la cuenta después de rotarlo.
+6. Abrir **Mi sesión**, entrar, pulsar **Conectar SoundCloud** y autorizar; después pulsar **Sincronizar todo el catálogo**.
+7. Para Firecrawl configurar su API key y `FIRECRAWL_ALLOWED_HOSTS`. Desde una sesión administradora enviar `POST /api/enrich` con JSON `{"url":"https://dominio-aprobado/pagina"}`. Solo enriquece contenido; no genera escuchas ni modifica automáticamente las pistas.
 
-## SoundCloud API
+## Datos y límites
 
-Configure:
+`/api/soundcloud` muestra exclusivamente el snapshot de pistas públicas importadas. Los plays son acumulados por pista, no un período de 12 meses ni el total completo de la cuenta. Se actualizan al sincronizar.
 
-```env
-SOUNDCLOUD_ACCESS_TOKEN=your_token_here
-SOUNDCLOUD_API_BASE=https://api.soundcloud.com
-BLACKMAMBA_ADMIN_PASSWORD=choose_a_private_password
-BLACKMAMBA_SESSION_SECRET=choose_a_long_random_secret
-```
+`/api/insights` exige sesión privada y resume los últimos 30 días: inicios (incluyen reanudaciones), finales y sesiones por pista. No mide personas únicas. Eventos enviados por el navegador pueden falsificarse: son telemetría informativa, nunca contadores acreditados ni evidencia antifraude. El límite de 30 eventos/minuto por sesión y la deduplicación UUID reducen duplicados, pero no reemplazan protección distribuida frente a abuso. Añadir rate limiting de infraestructura antes de abrir administración a tráfico significativo.
 
-**Never commit real credentials.** `.env*` files are ignored by Git.
+El evento PROGRESS conserva la posición; **no** se presenta como tiempo escuchado o retención porque los saltos de reproducción alterarían esa interpretación. No se persisten IP, ubicación ni referrer. Un fallo de almacenamiento se avisa sin interrumpir el audio.
 
-The server adapter pulls the authenticated profile and catalog. The browser never receives the private OAuth token.
+Sin conexión se muestra catálogo vacío y explicación. No hay métricas ficticias ni audio simulado. Las pistas retiradas de la importación quedan inactivas y conservan el historial de eventos. La importación recorre todas las páginas y deduplica por ID; si falla una página, se repite una URL o se supera el límite de seguridad de 100 páginas, conserva el catálogo anterior completo. Guarda el lote en una sola transacción.
 
-## Playback
+La edición existente modifica metadatos reales en SoundCloud bajo sesión privada; una edición se refleja en el catálogo persistido después de sincronizar. No hay subida ni publicación automática de audio.
 
-Each playable catalog row has a mini sinusoidal control. Playback is delegated to the official SoundCloud HTML5 widget, while BlackMamba renders the custom visual controls.
+## Verificación obligatoria de acreditación
 
-The UI also provides a visible SoundCloud source link for the active track. SoundCloud remains the streaming source and decides how playback is qualified/counts in its own analytics.
+1. Sincronizar pistas públicas del propietario.
+2. Abrir el sitio publicado desde otra cuenta o visitante y reproducir manualmente una pista en el widget.
+3. Confirmar PLAY/PROGRESS/FINISH en los eventos propios.
+4. Consultar Creator Insights de SoundCloud y contrastar el sitio de procedencia cuando el plan permita esa vista.
+5. Registrar fecha, pista, intervalo y resultado sin afirmar que cada PLAY del navegador debe incrementar SoundCloud. SoundCloud aplica sus propias reglas de acreditación.
 
-## Private edit session
+Referencia del [Widget API oficial](https://developers.soundcloud.com/docs/api/html5-widget). [Firecrawl scrape v2](https://docs.firecrawl.dev/api-reference/endpoint/scrape).
 
-Select **Mi sesión** in the catalog, enter `BLACKMAMBA_ADMIN_PASSWORD`, and the server issues an HTTP-only signed session cookie.
-
-In curation mode the app audits every track and flags missing:
-
-- artwork / cover
-- metadata artist
-- genre
-- tags
-- description
-
-The private editor can then update those fields directly on SoundCloud, including uploading replacement artwork. Pending tracks are automatically prioritized with missing artwork first and higher-traffic tracks ahead inside the same priority level.
-
-Public visitors can listen but cannot access write controls or the OAuth token.
-
-## Current analytics model
-
-The geographic and 12-month Insights data currently comes from the saved September 22, 2026 snapshot. Live profile, catalog and top-track data come from SoundCloud when an access token is configured.
-
-## Structure
-
-```text
-app/
-  api/admin/session/route.ts
-  api/soundcloud/route.ts
-  api/soundcloud/tracks/[id]/route.ts
-  globals.css
-  page.tsx
-components/
-  MetricCard.tsx
-  MiniSine.tsx
-  TrackEditor.tsx
-  TrackTable.tsx
-  WorldPulse.tsx
-data/
-  seed.ts
-lib/
-  admin-session.ts
-  types.ts
-```
-
-## Validation
+## Pruebas y despliegue
 
 ```bash
+npm test
 npm run typecheck
 npm run build
+npm audit --omit=dev
 ```
 
-GitHub Actions runs both checks on pull requests and pushes to `main`.
+Las pruebas cubren cifrado autenticado y rechazo de eventos inválidos. Las comprobaciones HTTP locales verifican catálogo vacío, autenticación de Insights/OAuth/sync, rechazo de origen y payload inválidos. No sustituyen pruebas de integración con servicios reales.
 
-## Roadmap priority
+Netlify detecta Next.js; `netlify.toml` usa Node 24. Configurar variables privadas en el panel del proyecto, nunca en Git ni en prefijos `NEXT_PUBLIC_`. Ejecutar la migración contra la base de producción antes de conectar la cuenta. `.netlify` se ignora para conservar estado de vinculación local fuera de Git.
 
-### P0 — Catalog curation
-- Detect missing artwork and core metadata across the entire catalog.
-- Curate directly from the private session.
-- Upload missing covers and save corrected metadata to SoundCloud.
-- Work through a priority queue weighted by missing fields and existing traffic.
+## Conexión del portal publicado
 
-### P1 — Curation quality
-- Batch presets for artist, genre and common tags.
-- Album-aware metadata inheritance and consistency checks.
-- Duplicate/inconsistent cover detection.
-- Curation progress snapshots and completion percentage.
+Portal: https://blackmamba-music-platform.netlify.app. La app existente `blackmamba` usa ahora el retorno `https://blackmamba-music-platform.netlify.app/api/auth/soundcloud/callback`, autorizado por el propietario. El perfil configurado es Iyari Gomez (`1561556004`). El programa local que usaba `http://127.0.0.1:8765/callback` requiere su propio retorno o app para futuras autorizaciones.
 
-### P2 — Analytics
-- Persist hourly/daily snapshots for 1h / 3h / 24h / 7d velocity.
-- Full geographic map layer.
-- Catalog buckets: >10K, 5K–10K, 1K–5K, 100–1K and <100.
+Netlify Database se provisiona con `@netlify/database` y las migraciones versionadas en `netlify/database/migrations/`. Se conserva `DATABASE_URL` como opción para PostgreSQL externo; el portal usa la conexión de Netlify en producción. Las credenciales de OAuth y administración se guardan en variables privadas del sitio y en archivos locales ignorados por Git.
 
-### P3 — Visual playback
-- Replace the generic mini sine with each track's real SoundCloud waveform signature.
-- Track detail page with waveform, comments and history.
+La cuenta Iyari Gomez quedó conectada por OAuth y la importación inicial de 50 pistas públicas se verificó en PostgreSQL. La sincronización ahora trae todas las páginas del catálogo público. El permiso OAuth se valida en el retorno con un nonce cifrado y expiración; la cookie privada permanece SameSite Strict.
 
-### P4 — Multi-platform
-- Normalize Spotify, YouTube and other sources behind the same analytics model.
+Sincronización completa verificada: **674 pistas públicas**, guardadas en PostgreSQL y disponibles para búsqueda/reproducción. La recarga del catálogo evita respuestas anteriores en caché. La prueba de acreditación en Creator Insights desde otra cuenta sigue pendiente.

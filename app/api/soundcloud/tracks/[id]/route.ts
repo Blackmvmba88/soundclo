@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/admin-session";
 
-const API_BASE = process.env.SOUNDCLOUD_API_BASE ?? "https://api.soundcloud.com";
-const MAX_ARTWORK_BYTES = 12 * 1024 * 1024;
+const API_BASE = "https://api.soundcloud.com";
+import { accessToken } from "@/lib/soundcloud";
 
 type EditableTrack = {
   title?: string;
@@ -96,22 +96,33 @@ async function updateArtwork(trackRef: string, token: string, artwork: File) {
 
 export async function PUT(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminSession())) {
-    return NextResponse.json({ error: "Admin session required." }, { status: 401 });
-  }
-
-  const token = process.env.SOUNDCLOUD_ACCESS_TOKEN;
-  if (!token) {
+  if (
+    request.headers.get("origin") !== new URL(request.url).origin ||
+    !(await isAdminSession())
+  ) {
     return NextResponse.json(
-      { error: "SOUNDCLOUD_ACCESS_TOKEN is not configured." },
-      { status: 503 }
+      { error: "Admin session required." },
+      { status: 401 },
     );
   }
 
-  const { id } = await context.params;
-  const contentType = request.headers.get("content-type") ?? "";
+  const token = await accessToken();
+  if (!token) {
+    return NextResponse.json(
+      { error: "SOUNDCLOUD_ACCESS_TOKEN is not configured." },
+      { status: 503 },
+    );
+  }
+
+  const body = (await request.json().catch(() => null)) as EditableTrack | null;
+  if (!body) {
+    return NextResponse.json(
+      { error: "Invalid request body." },
+      { status: 400 },
+    );
+  }
 
   let editable: EditableTrack = {};
   let artwork: File | null = null;
@@ -126,47 +137,37 @@ export async function PUT(
       metadataArtist: String(form.get("metadataArtist") ?? "")
     };
 
-    const file = form.get("artwork");
-    if (file instanceof File && file.size > 0) artwork = file;
-  } else {
-    editable = ((await request.json().catch(() => null)) ?? {}) as EditableTrack;
-  }
-
-  try {
-    let payload = await updateMetadata(id, token, editable);
-
-    if (artwork) {
-      payload = await updateArtwork(id, token, artwork);
-    }
-
-    if (!payload) {
-      return NextResponse.json({ error: "No editable fields supplied." }, { status: 400 });
-    }
-
-    return NextResponse.json({
-      id: String(payload.urn ?? payload.id ?? id),
-      title: payload.title ?? clean(editable.title, 200) ?? "",
-      description:
-        payload.description ?? clean(editable.description, 4000) ?? null,
-      genre: payload.genre ?? clean(editable.genre, 100) ?? null,
-      tagList: payload.tag_list ?? clean(editable.tagList, 1000) ?? null,
-      metadataArtist:
-        payload.metadata_artist ?? clean(editable.metadataArtist, 200) ?? null,
-      artworkUrl: payload.artwork_url ?? null
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "SoundCloud update failed.";
-    const match = message.match(/^(metadata|artwork):(\d+):(.*)$/s);
-    const status = match ? Number(match[2]) : 502;
-
+  if (!Object.keys(track).length) {
     return NextResponse.json(
-      {
-        error: match?.[1] === "artwork"
-          ? "SoundCloud rejected the artwork update."
-          : "SoundCloud rejected the metadata update.",
-        details: match?.[3] ?? message
-      },
-      { status }
+      { error: "No editable fields supplied." },
+      { status: 400 },
     );
   }
+
+  const { id } = await context.params;
+  const response = await fetch(`${API_BASE}/tracks/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `OAuth ${token}`,
+      Accept: "application/json; charset=utf-8",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ track }),
+    cache: "no-store",
+  });
+
+    return NextResponse.json(
+      { error: "SoundCloud rejected the update.", details: payload },
+      { status: response.status },
+    );
+  }
+
+  return NextResponse.json({
+    id: String(payload.id ?? id),
+    title: payload.title ?? title,
+    description: payload.description ?? description ?? null,
+    genre: payload.genre ?? genre ?? null,
+    tagList: payload.tag_list ?? tagList ?? null,
+    metadataArtist: payload.metadata_artist ?? metadataArtist ?? null,
+  });
 }
