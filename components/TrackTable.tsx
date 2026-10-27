@@ -4,6 +4,13 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MiniSine } from "@/components/MiniSine";
 import { TrackEditor } from "@/components/TrackEditor";
+import {
+  CURATION_LABELS,
+  curationIssues,
+  curationScore,
+  isCurated,
+  type CurationIssue
+} from "@/lib/curation";
 import type { TrackMetric } from "@/lib/types";
 
 type SoundCloudWidgetInstance = {
@@ -28,6 +35,8 @@ type SoundCloudWidgetFactory = {
   };
 };
 
+type CurationFilter = "all" | "pending" | "cover" | "metadata" | "curated";
+
 declare global {
   interface Window {
     SC?: {
@@ -48,6 +57,7 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
   const [loginError, setLoginError] = useState(false);
   const [editing, setEditing] = useState<TrackMetric | null>(null);
   const [query, setQuery] = useState("");
+  const [curationFilter, setCurationFilter] = useState<CurationFilter>("all");
   const [visibleCount, setVisibleCount] = useState(48);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const eventSession = useRef<string | null>(null);
@@ -61,7 +71,11 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" })
       .then((response) => response.json())
-      .then((payload) => setAdmin(Boolean(payload.authenticated)))
+      .then((payload) => {
+        const authenticated = Boolean(payload.authenticated);
+        setAdmin(authenticated);
+        if (authenticated) setCurationFilter("pending");
+      })
       .catch(() => setAdmin(false));
   }, []);
 
@@ -171,6 +185,17 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
     };
   }, [activeTrack, frameLoaded, scriptReady]);
 
+  const curationStats = useMemo(() => {
+    const covers = localTracks.filter((track) => curationIssues(track).includes("cover")).length;
+    const pending = localTracks.filter((track) => !isCurated(track)).length;
+    const curated = localTracks.length - pending;
+    const metadata = localTracks.filter((track) =>
+      curationIssues(track).some((issue) => issue !== "cover")
+    ).length;
+
+    return { covers, pending, curated, metadata };
+  }, [localTracks]);
+
   const filteredTracks = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return localTracks;
@@ -194,11 +219,8 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
     if (!track.permalinkUrl) return;
 
     if (activeTrack?.id === track.id && widgetRef.current) {
-      if (playing) {
-        widgetRef.current.pause();
-      } else {
-        widgetRef.current.play();
-      }
+      if (playing) widgetRef.current.pause();
+      else widgetRef.current.play();
       return;
     }
 
@@ -224,6 +246,7 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
     }
 
     setAdmin(true);
+    setCurationFilter("pending");
     setPassword("");
     setLoginOpen(false);
   }
@@ -231,6 +254,7 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
   async function logout() {
     await fetch("/api/admin/session", { method: "DELETE" });
     setAdmin(false);
+    setCurationFilter("all");
     setEditing(null);
   }
 
@@ -241,13 +265,20 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
     if (activeTrack?.id === updated.id) setActiveTrack(updated);
   }
 
+  function setFilter(filter: CurationFilter) {
+    setCurationFilter(filter);
+    setVisibleCount(48);
+  }
+
   return (
     <>
       <div className="glass track-panel">
         <div className="section-heading compact">
           <div>
-            <span className="eyebrow">CATALOG DEPTH · LISTEN INSIDE</span>
-            <h2>Hits enterrados en el océano.</h2>
+            <span className="eyebrow">
+              {admin ? "CATALOG CURATION · PRIORITY QUEUE" : "CATALOG DEPTH · LISTEN INSIDE"}
+            </span>
+            <h2>{admin ? "Dejar el catálogo curado." : "Hits enterrados en el océano."}</h2>
           </div>
           <div className="catalog-controls">
             <span className="muted">
@@ -275,6 +306,36 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
           </div>
         </div>
 
+        {admin ? (
+          <>
+            <div className="curation-stats">
+              <button type="button" onClick={() => setFilter("pending")} className={curationFilter === "pending" ? "active" : ""}>
+                <span>Pendientes</span>
+                <strong>{curationStats.pending}</strong>
+              </button>
+              <button type="button" onClick={() => setFilter("cover")} className={curationFilter === "cover" ? "active" : ""}>
+                <span>Sin portada</span>
+                <strong>{curationStats.covers}</strong>
+              </button>
+              <button type="button" onClick={() => setFilter("metadata")} className={curationFilter === "metadata" ? "active" : ""}>
+                <span>Metadata</span>
+                <strong>{curationStats.metadata}</strong>
+              </button>
+              <button type="button" onClick={() => setFilter("curated")} className={curationFilter === "curated" ? "active" : ""}>
+                <span>Curadas</span>
+                <strong>{curationStats.curated}</strong>
+              </button>
+              <button type="button" onClick={() => setFilter("all")} className={curationFilter === "all" ? "active" : ""}>
+                <span>Todas</span>
+                <strong>{localTracks.length}</strong>
+              </button>
+            </div>
+            <p className="curation-rule">
+              Prioridad automática: <strong>portada faltante</strong> primero, luego artista, género, tags y descripción; dentro de cada nivel pesan más las canciones con más reproducciones.
+            </p>
+          </>
+        ) : null}
+
         <div className="catalog-search-row">
           <input
             className="catalog-search"
@@ -283,7 +344,7 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
               setQuery(event.target.value);
               setVisibleCount(48);
             }}
-            placeholder="Buscar canción, género, tag o artista..."
+            placeholder="Buscar canción, género, tag, artista o descripción..."
             aria-label="Buscar en el catálogo"
           />
           <span>
@@ -296,6 +357,7 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
           {displayedTracks.map((track, index) => {
             const active = activeTrack?.id === track.id;
             const playable = Boolean(track.permalinkUrl);
+            const issues = curationIssues(track);
 
             return (
               <motion.div
@@ -304,7 +366,7 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: Math.min(index * 0.04, 0.3) }}
+                transition={{ delay: Math.min(index * 0.025, 0.2) }}
               >
                 <span className="track-index">
                   {String(index + 1).padStart(2, "0")}
@@ -343,6 +405,13 @@ export function TrackTable({ tracks }: { tracks: TrackMetric[] }) {
                 <div className="track-main">
                   <div className="track-title-line">
                     <strong>{track.title}</strong>
+                    {admin && issues.length ? (
+                      <div className="issue-badges">
+                        {issues.map((issue: CurationIssue) => (
+                          <span key={issue}>{CURATION_LABELS[issue]}</span>
+                        ))}
+                      </div>
+                    ) : null}
                     {track.permalinkUrl ? (
                       <a
                         href={track.permalinkUrl}

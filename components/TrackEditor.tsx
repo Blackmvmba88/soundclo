@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { CURATION_LABELS, curationIssues } from "@/lib/curation";
 import type { TrackMetric } from "@/lib/types";
 
 export function TrackEditor({
@@ -20,10 +21,23 @@ export function TrackEditor({
     track.metadataArtist ?? "Iyari Gomez",
   );
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const issues = useMemo(() => curationIssues(track), [track]);
+
+  function chooseArtwork(file: File | null) {
+    setArtwork(file);
+    if (!file) {
+      setArtworkPreview(track.artworkUrl ?? null);
+      return;
+    }
+    setArtworkPreview(URL.createObjectURL(file));
+  }
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setStatus("saving");
+    setErrorMessage("");
 
     const response = await fetch(
       `/api/soundcloud/tracks/${encodeURIComponent(track.id)}`,
@@ -41,6 +55,8 @@ export function TrackEditor({
     );
 
     if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      setErrorMessage(payload?.error ?? "SoundCloud no aceptó el cambio.");
       setStatus("error");
       return;
     }
@@ -66,8 +82,17 @@ export function TrackEditor({
       >
         <div className="editor-head">
           <div>
-            <span className="eyebrow">BLACKMAMBA ADMIN</span>
-            <h3>Editar en SoundCloud</h3>
+            <span className="eyebrow">BLACKMAMBA CURATION</span>
+            <h3>Curar pista</h3>
+            <div className="editor-issues">
+              {issues.length ? (
+                issues.map((issue) => (
+                  <span key={issue}>{CURATION_LABELS[issue]} faltante</span>
+                ))
+              ) : (
+                <span className="is-clean">Metadata completa</span>
+              )}
+            </div>
           </div>
           <button
             type="button"
@@ -88,7 +113,7 @@ export function TrackEditor({
           />
         </label>
 
-        <label>
+        <label className={!metadataArtist.trim() ? "field-missing" : ""}>
           Artista / metadata artist
           <input
             value={metadataArtist}
@@ -97,14 +122,14 @@ export function TrackEditor({
         </label>
 
         <div className="editor-columns">
-          <label>
+          <label className={!genre.trim() ? "field-missing" : ""}>
             Género
             <input
               value={genre}
               onChange={(event) => setGenre(event.target.value)}
             />
           </label>
-          <label>
+          <label className={!tagList.trim() ? "field-missing" : ""}>
             Tags
             <input
               value={tagList}
@@ -113,7 +138,7 @@ export function TrackEditor({
           </label>
         </div>
 
-        <label>
+        <label className={!description.trim() ? "field-missing" : ""}>
           Descripción
           <textarea
             rows={7}
